@@ -4,7 +4,7 @@
 
 A single-page tool that converts a date and time from any country and state to any other country and state. You pick a place on each side, enter a time, and get the same moment on the other clock.
 
-**Live demo:** [World Time Converter](https://worldtimeconverter.vercel.app/)]
+**Live demo:** [World Time Converter](https://worldtimeconverter.vercel.app/)
 
 ## Why this exists
 
