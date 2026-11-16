@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>World Time Converter</title>
+    <style>
+      :root {
+        --ink: #0f172a;
+        --panel: #e6e9ee;
+        --blue: #2563eb;
+        --sky: #60a5fa;
+        --line: #c3cad5;
+        --mute: #5d6878;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+        background: #07090d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: "Helvetica Neue", Inter, Arial, sans-serif;
+        background:
+          radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px) 0
+            0/14px 14px,
+          #07090d;
+      }
+      .mono,
+      .tag,
+      .lab,
+      .tzname,
+      .rail {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+      .rail {
+        position: fixed;
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: #8a94a6;
+        white-space: nowrap;
+        top: 60%;
+      }
+      .rail.l {
+        left: 14px;
+        transform: translateY(-50%) rotate(-90deg);
+        transform-origin: left center;
+      }
+      .rail.r {
+        right: 14px;
+        transform: translateY(-50%) rotate(90deg);
+        transform-origin: right center;
+        color: var(--sky);
+      }
+      @media (max-width: 1000px) {
+        .rail {
+          display: none;
+        }
+      }
+      main {
+        max-width: 1560px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        margin: 0 auto;
+        padding: 20px 14px;
+        display: flex;
+        align-items: center;
+      }
+      .sheet {
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        background: var(--panel);
+        padding: 26px 22px 22px;
+        clip-path: polygon(
+          0 0,
+          calc(100% - 46px) 0,
+          100% 46px,
+          100% 100%,
+          46px 100%,
+          0 calc(100% - 46px)
+        );
+      }
+      .sheet::before {
+        content: "";
+        position: absolute;
+        right: -70px;
+        top: 32%;
+        width: 380px;
+        height: 380px;
+        background: radial-gradient(
+          circle,
+          #2563eb,
+          rgba(37, 99, 235, 0.35) 45%,
+          transparent 70%
+        );
+        filter: blur(22px);
+        pointer-events: none;
+      }
+      .sheet > * {
+        position: relative;
+      }
+      .meta {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        color: var(--mute);
+      }
+      h1 {
+        font-size: clamp(34px, 7vw, 56px);
+        line-height: 0.98;
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        margin: 14px 0 8px;
+      }
+      h1 em {
+        font-style: normal;
+        color: var(--blue);
+      }
+      .sub {
+        font-size: 13.5px;
+        color: var(--mute);
+        max-width: 340px;
+        margin: 0 0 18px;
+      }
+      .tag {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 5px;
+        background: var(--blue);
+        color: #fff;
+        border-radius: 999px;
+        padding: 11px 28px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        margin-bottom: 20px;
+        align-self: flex-start;
+      }
+      .tag i {
+        display: block;
+        height: 5px;
+        background: repeating-linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.85) 0 2px,
+          transparent 2px 5px
+        );
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 46px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+      @media (max-width: 760px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        #swap {
+          transform: rotate(90deg);
+        }
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px 16px 16px;
+        background: #f5f7fa;
+      }
+      .card.glass {
+        background: rgba(255, 255, 255, 0.55);
+        -webkit-backdrop-filter: blur(18px);
+        backdrop-filter: blur(18px);
+        border-color: rgba(255, 255, 255, 0.7);
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--blue);
+      }
+      .pair {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 10px;
+      }
+      .f {
+        flex: 1 1 150px;
+        min-width: 0;
+      }
+      label,
+      .lab {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: var(--mute);
+        margin: 12px 0 5px;
+      }
+      select,
+      input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: #fff;
+        color: var(--ink);
+        font: 14px inherit;
+        font-family: inherit;
+      }
+      option {
+        background: #fff;
+        color: #0f172a;
+      }
+      select:focus,
+      input:focus,
+      button:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 1px;
+      }
+      .tm {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .tm span {
+        color: var(--mute);
+      }
+      .tzname {
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--mute);
+        overflow-wrap: anywhere;
+      }
+      button {
+        font: 600 13px inherit;
+        font-family: inherit;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 10px 18px;
+        border: 1px solid var(--ink);
+        background: transparent;
+        color: var(--ink);
+      }
+      button:active {
+        transform: scale(0.95);
+      }
+      #swap {
+        width: 46px;
+        height: 46px;
+        padding: 0;
+        font-size: 18px;
+        background: #fff;
+        justify-self: center;
+        border: none;
+      }
+      .act {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      #now {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: #fff;
+      }
+      .chk {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .chk input {
+        accent-color: var(--blue);
+        width: 16px;
+        height: 16px;
+      }
+      .chk label {
+        margin: 0;
+        letter-spacing: 0.5px;
+      }
+      .result {
+        margin-top: 14px;
+        background: #f5f7fa;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 16px 20px 14px;
+      }
+      .rtop {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: var(--blue);
+      }
+      .big {
+        display: block;
+        white-space: nowrap;
+        font-family: Cambria, Cochin, Georgia, Times, "Times New Roman", serif;
+        font-size: clamp(54px, min(14vw, 17vh), 140px);
+        font-weight: 200;
+        letter-spacing: -0.05em;
+        line-height: 1;
+        margin: 6px 0 4px;
+      }
+      .dd {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 2px 16px;
+      }
+      .date {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .diff {
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .segs {
+        display: flex;
+        gap: 4px;
+        margin-top: 12px;
+      }
+      .segs b {
+        flex: 1;
+        height: 9px;
+        background: #c9d0da;
+      }
+      .segs b.on {
+        background: var(--blue);
+      }
+      .scale {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--mute);
+        margin-top: 5px;
+        letter-spacing: 1px;
+      }
+      .foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+        font-size: 10.5px;
+        color: var(--mute);
+        letter-spacing: 1px;
+      }
+      .bar {
+        height: 26px;
+        width: 110px;
+        background: repeating-linear-gradient(
+          90deg,
+          var(--ink) 0 2px,
+          transparent 2px 4px,
+          var(--ink) 4px 5px,
+          transparent 5px 9px
+        );
+      }
+      .head {
+        display: flex;
+        flex-direction: column;
+      }
+      @media (min-width: 1100px) {
+        .sheet {
+          display: grid;
+          grid-template-columns: 330px 1fr;
+          gap: 34px;
+          padding: 34px 38px 30px;
+        }
+        h1 {
+          font-size: clamp(50px, 3.2vw, 62px);
+        }
+        .foot {
+          margin-top: auto;
+          padding-top: 16px;
+        }
+        .sub {
+          margin-bottom: 22px;
+        }
+      }
+      @media (min-width: 1100px) and (max-height: 820px) {
+        main {
+          padding: 10px 14px;
+        }
+        .sheet {
+          padding: 22px 30px 20px;
+        }
+        h1 {
+          font-size: 52px;
+        }
+        label {
+          margin-top: 8px;
+        }
+        .result {
+          padding: 12px 18px 10px;
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="rail l">BEYOND BORDERS · BEYOND CLOCKS</div>
+    <div class="rail r">TIME ZONE INDEX · LIVE</div>
+    <main>
+      <div class="sheet">
+        <div class="head">
+          <div class="meta mono">
+            TIME · ZONES · WORLD &nbsp;/&nbsp; INDEX 01
+          </div>
+          <h1>Time,<br /><em>Anywhere.</em></h1>
+          <p class="sub">
+            Pick a country and state, then read the same moment on any clock in
+            the world.
+          </p>
+          <div class="tag">
+            <span>TIME CONVERSION PROTOCOL</span
+            ><span id="code">CODE: TZ-00-00</span><i></i>
+          </div>
+          <div class="foot mono">
+            <span>BLUE HARMONY SYSTEM</span>
+            <div class="bar" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="grid">
+            <section class="card">
+              <h2>From</h2>
+              <div class="pair">
+                <div class="f">
+                  <label for="cF">COUNTRY</label
+                  ><select id="cF"></select>
+                </div>
+                <div class="f">
+                  <label for="rF" id="rFl">STATE / REGION</label
+                  ><select id="rF"></select>
+                </div>
+              </div>
+              <div class="pair">
+                <div class="f">
+                  <label for="dt">DATE</label><input type="date" id="dt" />
+                </div>
+                <div class="f">
+                  <label for="hh">TIME</label>
+                  <div class="tm">
+                    <select id="hh" aria-label="Hour"></select
+                    ><span>:</span
+                    ><select id="mm" aria-label="Minute"></select
+                    ><select
+                      id="ap"
+                      aria-label="AM or PM"
+                      style="display: none"
+                    >
+                      <option>AM</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="act">
+                <div class="chk">
+                  <input type="checkbox" id="h12F" /><label for="h12F"
+                    >12-HOUR CLOCK</label
+                  >
+                </div>
+                <button id="now">Use current time</button>
+              </div>
+              <div class="tzname" id="nF"></div>
+            </section>
+            <button id="swap" aria-label="Swap from and to">⇄</button>
+            <section class="card glass">
+              <h2>To</h2>
+              <div class="pair">
+                <div class="f">
+                  <label for="cT">COUNTRY</label
+                  ><select id="cT"></select>
+                </div>
+                <div class="f">
+                  <label for="rT" id="rTl">STATE / REGION</label
+                  ><select id="rT"></select>
+                </div>
+              </div>
+              <div class="act">
+                <div class="chk">
+                  <input type="checkbox" id="h12" /><label for="h12"
+                    >12-HOUR CLOCK</label
+                  >
+                </div>
+              </div>
+              <div class="tzname" id="nT"></div>
+            </section>
+          </div>
+          <section class="result" aria-live="polite">
+            <div class="rtop mono">
+              <span>// LOCAL TIME THERE</span><span id="off">UTC</span>
+            </div>
+            <span class="big" id="time">--:--</span>
+            <div class="dd">
+              <span class="date" id="date"></span
+              ><span class="diff" id="diff"></span>
+            </div>
+            <div class="segs" id="segs"></div>
+            <div class="scale mono">
+              <span>00</span><span>06</span><span>12</span><span>18</span
+              ><span>24H</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <script>
+      var T = {
+        N: "America/New_York",
+        C: "America/Chicago",
+        M: "America/Denver",
+        P: "America/Los_Angeles",
+        K: "America/Anchorage",
+        H: "Pacific/Honolulu",
+        X: "America/Phoenix",
+        I: "America/Indiana/Indianapolis",
+        D: "America/Detroit",
+        B: "America/Boise",
+      };
+      function parse(s) {
+        return s.split(",").map(function (x) {
+          var a = x.split(":");
+          return [a[0], T[a[1]] || a[1]];
+        });
+      }
+      var US = parse(
+        "Alabama:C,Alaska:K,Arizona:X,Arkansas:C,California:P,Colorado:M,Connecticut:N,Delaware:N,District of Columbia:N,Florida:N,Georgia:N,Hawaii:H,Idaho:B,Illinois:C,Indiana:I,Iowa:C,Kansas:C,Kentucky:N,Louisiana:C,Maine:N,Maryland:N,Massachusetts:N,Michigan:D,Minnesota:C,Mississippi:C,Missouri:C,Montana:M,Nebraska:C,Nevada:P,New Hampshire:N,New Jersey:N,New Mexico:M,New York:N,North Carolina:N,North Dakota:C,Ohio:N,Oklahoma:C,Oregon:P,Pennsylvania:N,Rhode Island:N,South Carolina:N,South Dakota:C,Tennessee:C,Texas:C,Utah:M,Vermont:N,Virginia:N,Washington:P,West Virginia:N,Wisconsin:C,Wyoming:M",
+      );
+      var multi = {
+        "United States": US,
+        Canada: parse(
+          "Alberta:America/Edmonton,British Columbia:America/Vancouver,Manitoba:America/Winnipeg,New Brunswick:America/Moncton,Newfoundland and Labrador:America/St_Johns,Nova Scotia:America/Halifax,Ontario:America/Toronto,Prince Edward Island:America/Halifax,Quebec:America/Toronto,Saskatchewan:America/Regina,Yukon:America/Whitehorse",
+        ),
+        Australia: parse(
+          "New South Wales:Australia/Sydney,Victoria:Australia/Melbourne,Queensland:Australia/Brisbane,South Australia:Australia/Adelaide,Western Australia:Australia/Perth,Tasmania:Australia/Hobart,Northern Territory:Australia/Darwin,Australian Capital Territory:Australia/Sydney",
+        ),
+        Brazil: parse(
+          "Brasília / São Paulo / Rio:America/Sao_Paulo,Amazonas:America/Manaus,Acre:America/Rio_Branco,Fernando de Noronha:America/Noronha",
+        ),
+        Russia: parse(
+          "Moscow:Europe/Moscow,Kaliningrad:Europe/Kaliningrad,Yekaterinburg:Asia/Yekaterinburg,Novosibirsk:Asia/Novosibirsk,Irkutsk:Asia/Irkutsk,Vladivostok:Asia/Vladivostok,Kamchatka:Asia/Kamchatka",
+        ),
+        Mexico: parse(
+          "Mexico City:America/Mexico_City,Baja California:America/Tijuana,Quintana Roo:America/Cancun,Sonora:America/Hermosillo,Chihuahua:America/Chihuahua",
+        ),
+        Indonesia: parse(
+          "Java / Sumatra (WIB):Asia/Jakarta,Bali / Sulawesi (WITA):Asia/Makassar,Papua (WIT):Asia/Jayapura",
+        ),
+      };
+      var single = parse(
+        "Afghanistan:Asia/Kabul,Argentina:America/Argentina/Buenos_Aires,Bangladesh:Asia/Dhaka,Bhutan:Asia/Thimphu,Cambodia:Asia/Phnom_Penh,Chile:America/Santiago,China:Asia/Shanghai,Colombia:America/Bogota,Egypt:Africa/Cairo,Ethiopia:Africa/Addis_Ababa,France:Europe/Paris,Germany:Europe/Berlin,Greece:Europe/Athens,Hong Kong:Asia/Hong_Kong,India:Asia/Kolkata,Iran:Asia/Tehran,Iraq:Asia/Baghdad,Ireland:Europe/Dublin,Israel:Asia/Jerusalem,Italy:Europe/Rome,Japan:Asia/Tokyo,Kenya:Africa/Nairobi,Malaysia:Asia/Kuala_Lumpur,Maldives:Indian/Maldives,Morocco:Africa/Casablanca,Myanmar:Asia/Yangon,Nepal:Asia/Kathmandu,Netherlands:Europe/Amsterdam,New Zealand:Pacific/Auckland,Nigeria:Africa/Lagos,Norway:Europe/Oslo,Pakistan:Asia/Karachi,Peru:America/Lima,Philippines:Asia/Manila,Poland:Europe/Warsaw,Portugal:Europe/Lisbon,Qatar:Asia/Qatar,Saudi Arabia:Asia/Riyadh,Singapore:Asia/Singapore,South Africa:Africa/Johannesburg,South Korea:Asia/Seoul,Spain:Europe/Madrid,Sri Lanka:Asia/Colombo,Sweden:Europe/Stockholm,Switzerland:Europe/Zurich,Thailand:Asia/Bangkok,Turkey:Europe/Istanbul,Ukraine:Europe/Kyiv,United Arab Emirates:Asia/Dubai,United Kingdom:Europe/London,Vietnam:Asia/Ho_Chi_Minh",
+      );
+      var OTHER = "Other (any IANA time zone)";
+      var data = {};
+      single.forEach(function (p) {
+        data[p[0]] = [[p[0], p[1]]];
+      });
+      for (var k in multi) data[k] = multi[k];
+      var ST = {
+        Bangladesh:
+          "Dhaka,Chattogram,Khulna,Rajshahi,Rangpur,Sylhet,Barishal,Mymensingh",
+        India:
+          "Andhra Pradesh,Arunachal Pradesh,Assam,Bihar,Chhattisgarh,Goa,Gujarat,Haryana,Himachal Pradesh,Jharkhand,Karnataka,Kerala,Madhya Pradesh,Maharashtra,Manipur,Meghalaya,Mizoram,Nagaland,Odisha,Punjab,Rajasthan,Sikkim,Tamil Nadu,Telangana,Tripura,Uttar Pradesh,Uttarakhand,West Bengal,Delhi,Jammu and Kashmir,Ladakh,Chandigarh,Puducherry",
+        Pakistan:
+          "Punjab,Sindh,Khyber Pakhtunkhwa,Balochistan,Islamabad,Gilgit-Baltistan,Azad Kashmir",
+        Nepal: "Koshi,Madhesh,Bagmati,Gandaki,Lumbini,Karnali,Sudurpashchim",
+        "Sri Lanka":
+          "Western,Central,Southern,Northern,Eastern,North Western,North Central,Uva,Sabaragamuwa",
+        China:
+          "Beijing,Shanghai,Tianjin,Chongqing,Guangdong,Zhejiang,Jiangsu,Shandong,Sichuan,Hubei,Hunan,Henan,Hebei,Fujian,Anhui,Shaanxi,Liaoning,Heilongjiang,Jilin,Yunnan,Guizhou,Guangxi,Shanxi,Jiangxi,Hainan,Gansu,Qinghai,Inner Mongolia,Ningxia,Tibet,Xinjiang",
+        Japan:
+          "Hokkaido,Aomori,Iwate,Miyagi,Akita,Yamagata,Fukushima,Ibaraki,Tochigi,Gunma,Saitama,Chiba,Tokyo,Kanagawa,Niigata,Toyama,Ishikawa,Fukui,Yamanashi,Nagano,Gifu,Shizuoka,Aichi,Mie,Shiga,Kyoto,Osaka,Hyogo,Nara,Wakayama,Tottori,Shimane,Okayama,Hiroshima,Yamaguchi,Tokushima,Kagawa,Ehime,Kochi,Fukuoka,Saga,Nagasaki,Kumamoto,Oita,Miyazaki,Kagoshima,Okinawa",
+        "South Korea":
+          "Seoul,Busan,Incheon,Daegu,Daejeon,Gwangju,Ulsan,Sejong,Gyeonggi,Gangwon,North Chungcheong,South Chungcheong,North Jeolla,South Jeolla,North Gyeongsang,South Gyeongsang,Jeju",
+        Malaysia:
+          "Johor,Kedah,Kelantan,Malacca,Negeri Sembilan,Pahang,Penang,Perak,Perlis,Sabah,Sarawak,Selangor,Terengganu,Kuala Lumpur,Putrajaya,Labuan",
+        Germany:
+          "Baden-Württemberg,Bavaria,Berlin,Brandenburg,Bremen,Hamburg,Hesse,Lower Saxony,Mecklenburg-Vorpommern,North Rhine-Westphalia,Rhineland-Palatinate,Saarland,Saxony,Saxony-Anhalt,Schleswig-Holstein,Thuringia",
+        France:
+          "Île-de-France,Auvergne-Rhône-Alpes,Bourgogne-Franche-Comté,Brittany,Centre-Val de Loire,Corsica,Grand Est,Hauts-de-France,Normandy,Nouvelle-Aquitaine,Occitanie,Pays de la Loire,Provence-Alpes-Côte d'Azur",
+        Italy:
+          "Abruzzo,Aosta Valley,Apulia,Basilicata,Calabria,Campania,Emilia-Romagna,Friuli Venezia Giulia,Lazio,Liguria,Lombardy,Marche,Molise,Piedmont,Sardinia,Sicily,Trentino-South Tyrol,Tuscany,Umbria,Veneto",
+        Spain:
+          "Andalusia,Aragon,Asturias,Balearic Islands,Basque Country,Canary Islands:Atlantic/Canary,Cantabria,Castile and León,Castilla-La Mancha,Catalonia,Extremadura,Galicia,La Rioja,Madrid,Murcia,Navarre,Valencia",
+        "United Kingdom": "England,Scotland,Wales,Northern Ireland",
+        Netherlands:
+          "Drenthe,Flevoland,Friesland,Gelderland,Groningen,Limburg,North Brabant,North Holland,Overijssel,South Holland,Utrecht,Zeeland",
+        "South Africa":
+          "Eastern Cape,Free State,Gauteng,KwaZulu-Natal,Limpopo,Mpumalanga,North West,Northern Cape,Western Cape",
+        "United Arab Emirates":
+          "Abu Dhabi,Dubai,Sharjah,Ajman,Umm Al Quwain,Ras Al Khaimah,Fujairah",
+        "Saudi Arabia":
+          "Riyadh,Makkah,Madinah,Eastern Province,Asir,Tabuk,Qassim,Ha'il,Jazan,Najran,Al Bahah,Al Jawf,Northern Borders",
+      };
+      for (var sc in ST) {
+        (function (c) {
+          var z0 = data[c][0][1];
+          data[c] = ST[c].split(",").map(function (x) {
+            var a = x.split(":");
+            return [a[0], a[1] || z0];
+          });
+        })(sc);
+      }
+      function allZones() {
+        try {
+          return Intl.supportedValuesOf("timeZone").map(function (z) {
+            return [z.replace(/_/g, " "), z];
+          });
+        } catch (e) {
+          return [["UTC", "UTC"]];
+        }
+      }
+      var names = Object.keys(data).sort();
+      names.push(OTHER);
+      function regions(c) {
+        return c === OTHER ? allZones() : data[c];
+      }
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+      function fill(sel, items, val) {
+        sel.innerHTML = "";
+        items.forEach(function (x) {
+          var o = document.createElement("option");
+          o.value = Array.isArray(x) ? x[1] : x;
+          o.textContent = Array.isArray(x) ? x[0] : x;
+          sel.appendChild(o);
+        });
+        if (val) sel.value = val;
+      }
+      function setCountry(cs, rs, lbl, c, r) {
+        var list = regions(c);
+        fill(rs, list, r);
+        var one = list.length === 1;
+        rs.parentNode.style.display = one ? "none" : "";
+      }
+      function tz(side) {
+        return $("r" + side).value;
+      }
+
+      function offMs(z, ms) {
+        var p = new Intl.DateTimeFormat("en-US", {
+            timeZone: z,
+            hourCycle: "h23",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+          }).formatToParts(new Date(ms)),
+          o = {};
+        p.forEach(function (x) {
+          o[x.type] = +x.value;
+        });
+        return (
+          Date.UTC(o.year, o.month - 1, o.day, o.hour, o.minute, o.second) -
+          Math.floor(ms / 1000) * 1000
+        );
+      }
+      function wallToUtc(str, z) {
+        var a = str.split("T"),
+          d = a[0].split("-").map(Number),
+          t = a[1].split(":").map(Number);
+        var g = Date.UTC(d[0], d[1] - 1, d[2], t[0], t[1]);
+        var u = g - offMs(z, g);
+        return g - offMs(z, u);
+      }
+      function fmtOff(min) {
+        var s = min < 0 ? "-" : "+",
+          m = Math.abs(min);
+        return (
+          "UTC" +
+          s +
+          Math.floor(m / 60) +
+          (m % 60 ? ":" + String(m % 60).padStart(2, "0") : "")
+        );
+      }
+      function nowIn(z) {
+        var n = Date.now();
+        return new Date(n + offMs(z, n)).toISOString().slice(0, 16);
+      }
+
+      var was12 = false;
+      (function () {
+        var o = "";
+        for (var i = 0; i < 24; i++) o += "<b></b>";
+        document.getElementById("segs").innerHTML = o;
+      })();
+      function pad(n) {
+        return String(n).padStart(2, "0");
+      }
+      function get24() {
+        var h = +$("hh").value;
+        return was12 ? (h % 12) + ($("ap").value === "PM" ? 12 : 0) : h;
+      }
+      function buildH(h) {
+        var o = "",
+          i;
+        if (was12) {
+          for (i = 1; i <= 12; i++)
+            o += '<option value="' + i + '">' + i + "</option>";
+          $("hh").innerHTML = o;
+          $("hh").value = h % 12 || 12;
+          $("ap").value = h >= 12 ? "PM" : "AM";
+        } else {
+          for (i = 0; i < 24; i++)
+            o += '<option value="' + i + '">' + pad(i) + "</option>";
+          $("hh").innerHTML = o;
+          $("hh").value = h;
+        }
+        $("ap").style.display = was12 ? "" : "none";
+      }
+      (function () {
+        var o = "";
+        for (var i = 0; i < 60; i++)
+          o += '<option value="' + i + '">' + pad(i) + "</option>";
+        $("mm").innerHTML = o;
+      })();
+      function setTime(s) {
+        $("dt").value = s.slice(0, 10);
+        $("mm").value = +s.slice(14, 16);
+        buildH(+s.slice(11, 13));
+      }
+      function getWall() {
+        return $("dt").value
+          ? $("dt").value + "T" + pad(get24()) + ":" + pad($("mm").value)
+          : "";
+      }
+
+      function update() {
+        var zF = tz("F"),
+          zT = tz("T"),
+          v = getWall();
+        if (!v) {
+          $("time").textContent = "--:--";
+          $("date").textContent = "Choose a date";
+          $("diff").textContent = "";
+          return;
+        }
+        var u = wallToUtc(v, zF),
+          oF = offMs(zF, u) / 60000,
+          oT = offMs(zT, u) / 60000;
+        $("nF").textContent = zF + " · " + fmtOff(oF);
+        $("nT").textContent = zT + " · " + fmtOff(oT);
+        var dt = new Date(u);
+        $("time").textContent = new Intl.DateTimeFormat("en-GB", {
+          timeZone: zT,
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: $("h12").checked,
+        })
+          .format(dt)
+          .toUpperCase();
+        $("date").textContent = new Intl.DateTimeFormat("en-GB", {
+          timeZone: zT,
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(dt);
+        var p = new Intl.DateTimeFormat("en-GB", {
+            timeZone: zT,
+            hourCycle: "h23",
+            hour: "numeric",
+            minute: "numeric",
+          }).formatToParts(dt),
+          h = 0,
+          m = 0;
+        p.forEach(function (x) {
+          if (x.type === "hour") h = +x.value;
+          if (x.type === "minute") m = +x.value;
+        });
+        var sg = $("segs").children;
+        for (var k = 0; k < 24; k++) sg[k].className = k <= h ? "on" : "";
+        $("off").textContent = fmtOff(oT);
+        $("code").textContent =
+          "CODE: TZ-" +
+          pad(Math.abs((oF / 60) | 0)) +
+          "-" +
+          pad(Math.abs((oT / 60) | 0));
+        var d = oT - oF,
+          ah = Math.floor(Math.abs(d) / 60),
+          am = Math.abs(d) % 60;
+        $("diff").textContent =
+          d === 0
+            ? "Same time"
+            : ah +
+              "h" +
+              (am ? " " + am + "m" : "") +
+              (d > 0 ? " ahead of" : " behind") +
+              " the source place";
+      }
+
+      fill($("cF"), names);
+      fill($("cT"), names);
+      $("cF").value = "United States";
+      $("cT").value = "Bangladesh";
+      setCountry(
+        $("cF"),
+        $("rF"),
+        $("rFl"),
+        "United States",
+        "America/New_York",
+      );
+      setCountry($("cT"), $("rT"), $("rTl"), "Bangladesh");
+      setTime(nowIn(tz("F")));
+
+      $("cF").onchange = function () {
+        setCountry($("cF"), $("rF"), $("rFl"), this.value);
+        update();
+      };
+      $("cT").onchange = function () {
+        setCountry($("cT"), $("rT"), $("rTl"), this.value);
+        update();
+      };
+      $("rF").onchange =
+        $("rT").onchange =
+        $("dt").oninput =
+        $("hh").onchange =
+        $("mm").onchange =
+        $("ap").onchange =
+        $("h12").onchange =
+          update;
+      $("h12F").onchange = function () {
+        var h = get24();
+        was12 = this.checked;
+        buildH(h);
+        update();
+      };
+      $("now").onclick = function () {
+        setTime(nowIn(tz("F")));
+        update();
+      };
+      $("swap").onclick = function () {
+        var cF = $("cF").value,
+          rF = $("rF").value,
+          cT = $("cT").value,
+          rT = $("rT").value;
+        $("cF").value = cT;
+        setCountry($("cF"), $("rF"), $("rFl"), cT, rT);
+        $("cT").value = cF;
+        setCountry($("cT"), $("rT"), $("rTl"), cF, rF);
+        update();
+      };
+      update();
+    </script>
+  </body>
+</html>
